@@ -37,7 +37,7 @@ Navigate to **Settings → Secrets and variables → Actions → New repository 
 | `BASE_URL` | Full base URL of the company site, e.g. `https://www.example.com` |
 | `USERNAME` | Your login email or username |
 | `PASSWORD` | Your password |
-| `STATUS_CHOICE` | `available` or `unavailable` |
+| `STATUS_CHOICE` | `available` or `unavailable` (case-insensitive) |
 | `TELEGRAM_BOT_TOKEN` | Token from BotFather |
 | `TELEGRAM_CHAT_ID` | Your Telegram chat ID from `getUpdates` |
 
