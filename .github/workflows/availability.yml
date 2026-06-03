@@ -2,70 +2,65 @@ name: Set Daily Availability
 
 on:
   schedule:
-    - cron: '0 13 * * 1-5'
+    # 11:00 UTC = 7:00 AM ET (Mon-Fri). Adjust via crontab.guru.
+    - cron: '0 11 * * 1-5'
   workflow_dispatch:
 
 jobs:
   set-availability:
     runs-on: ubuntu-latest
     outputs:
-      result: ${{ steps.run-script.outputs.result }}
+      result: ${{ steps.run.outputs.result }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
       - name: Install dependencies
         run: |
-          pip install playwright
+          pip install -r requirements.txt
           playwright install chromium --with-deps
 
-      - name: Run availability script
-        id: run-script
+      - name: Set availability
+        id: run
         env:
-          LOGIN_URL: ${{ secrets.LOGIN_URL }}
+          BASE_URL: ${{ secrets.BASE_URL }}
           USERNAME: ${{ secrets.USERNAME }}
           PASSWORD: ${{ secrets.PASSWORD }}
-          STATUS_URL: ${{ secrets.STATUS_URL }}
           STATUS_CHOICE: ${{ secrets.STATUS_CHOICE }}
-          USERNAME_SELECTOR: ${{ secrets.USERNAME_SELECTOR }}
-          PASSWORD_SELECTOR: ${{ secrets.PASSWORD_SELECTOR }}
-          SUBMIT_SELECTOR: ${{ secrets.SUBMIT_SELECTOR }}
-          STATUS_BUTTON_SELECTOR: ${{ secrets.STATUS_BUTTON_SELECTOR }}
-          SAVE_BUTTON_SELECTOR: ${{ secrets.SAVE_BUTTON_SELECTOR }}
+          PAGE_TIMEOUT: ${{ secrets.PAGE_TIMEOUT }}
+          MAX_RETRIES: ${{ secrets.MAX_RETRIES }}
+          RETRY_DELAY: ${{ secrets.RETRY_DELAY }}
         run: python set_availability.py
 
-      - name: Upload screenshot (for debugging)
+      - uses: actions/upload-artifact@v4
         if: always()
-        uses: actions/upload-artifact@v4
         with:
           name: screenshots
           path: |
-            status-confirmation.png
+            final-status.png
             error-screenshot.png
           retention-days: 3
 
-      - name: Notify via Telegram on success
-        if: steps.run-script.outputs.result == 'success'
+      - name: Notify Telegram (Success)
+        if: steps.run.outputs.result == 'success'
         uses: appleboy/telegram-action@v1
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           message: |
-            ✅ Availability set to "${{ secrets.STATUS_CHOICE }}" for today.
+            ✅ Availability set to "${{ secrets.STATUS_CHOICE }}" for tomorrow.
             $(date '+%Y-%m-%d %H:%M UTC')
 
-      - name: Notify via Telegram on failure
-        if: steps.run-script.outputs.result == 'failure' || failure()
+      - name: Notify Telegram (Failure / Unknown)
+        if: steps.run.outputs.result != 'success'
         uses: appleboy/telegram-action@v1
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           message: |
-            ❌ FAILED to set availability.
+            ❌ Availability bot FAILED.
             Check: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
