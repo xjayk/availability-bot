@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:                          # ← single job name for easy querying
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/ruff-action@v3
+        with:
+          args: check set_availability.py
+
+      - uses: astral-sh/ruff-action@v3
+        with:
+          args: format --check set_availability.py
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: pip install mypy playwright
+
+      - run: mypy set_availability.py --ignore-missing-imports
+
+      - run: pip install yamllint
+
+      - run: yamllint .github/workflows/ --config-data "{extends: default, rules: {line-length: disable, document-start: disable}}"

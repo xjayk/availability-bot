@@ -7,10 +7,68 @@ on:
   workflow_dispatch:
 
 jobs:
-  set-availability:
-    runs-on: ubuntu-latest
-    outputs:
-      result: ${{ steps.run.outputs.result }}
+
+  ## TODO: Enable once the CI pipeline is established as stable.
+  # gate:
+  #   runs-on: ubuntu-latest
+  #   outputs:
+  #     proceed: ${{ steps.check.outputs.proceed }}
+  #   steps:
+  #     - uses: actions/github-script@v7
+  #       id: check
+  #       with:
+  #         script: |
+  #           const { data: runs } = await github.rest.actions.listWorkflowRuns({
+  #             owner: context.repo.owner,
+  #             repo: context.repo.repo,
+  #             workflow_id: 'ci.yml',
+  #             branch: 'main',
+  #             status: 'completed',
+  #             per_page: 1,
+  #           });
+# 
+  #           if (runs.workflow_runs.length === 0) {
+  #             core.setOutput('proceed', 'no_run');
+  #             return;
+  #           }
+# 
+  #           const lastRun = runs.workflow_runs[0];
+  #           core.setOutput('proceed', lastRun.conclusion === 'success' ? 'pass' : 'fail');
+  #           core.setOutput('run_url', lastRun.html_url);
+  #           core.setOutput('conclusion', lastRun.conclusion);
+# 
+  #     - name: Notify Telegram — Gate Skipped (No CI Runs Found)
+  #       if: steps.check.outputs.proceed == 'no_run'
+  #       uses: appleboy/telegram-action@v1
+  #       with:
+  #         to: ${{ secrets.TELEGRAM_CHAT_ID }}
+  #         token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  #         message: |
+  #           ⚠️ Availability bot SKIPPED — no CI runs found on main.
+  #           A push to main is needed before the daily job can run.
+# 
+  #     - name: Notify Telegram — Gate Failed
+  #       if: steps.check.outputs.proceed == 'fail'
+  #       uses: appleboy/telegram-action@v1
+  #       with:
+  #         to: ${{ secrets.TELEGRAM_CHAT_ID }}
+  #         token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  #         message: |
+  #           🚫 Availability bot SKIPPED — last CI run on main ${{ steps.check.outputs.conclusion }}.
+  #           Fix: ${{ steps.check.outputs.run_url }}
+  # 
+  # set-availability:
+  #   needs: gate
+  #   if: needs.gate.outputs.proceed == 'pass' || needs.gate.outputs.proceed == 'no_run'
+  #   # ↑ runs if CI passed OR if no CI has ever run (first-time setup)
+  #   runs-on: ubuntu-latest
+  #   outputs:
+  #     result: ${{ steps.run.outputs.result }}
+    
+    set-availability:
+      runs-on: ubuntu-latest
+      outputs:
+        result: ${{ steps.run.outputs.result }}
 
     steps:
       - uses: actions/checkout@v4
@@ -45,6 +103,26 @@ jobs:
             error-screenshot.png
           retention-days: 3
 
+      - name: Check last CI status (informational only)
+        id: ci-status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: runs } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'ci.yml',
+              branch: 'main',
+              status: 'completed',
+              per_page: 1,
+            });
+            if (runs.workflow_runs.length > 0) {
+              core.setOutput('ci_conclusion', runs.workflow_runs[0].conclusion);
+              core.setOutput('ci_url', runs.workflow_runs[0].html_url);
+            } else {
+              core.setOutput('ci_conclusion', 'no_runs');
+            }
+
       - name: Notify Telegram (Success)
         if: steps.run.outputs.result == 'success'
         uses: appleboy/telegram-action@v1
@@ -53,6 +131,7 @@ jobs:
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           message: |
             ✅ Availability set to "${{ secrets.STATUS_CHOICE }}" for tomorrow.
+            CI on main: ${{ steps.ci-status.outputs.ci_conclusion }}
             $(date '+%Y-%m-%d %H:%M UTC')
 
       - name: Notify Telegram (Failure / Unknown)
@@ -63,4 +142,5 @@ jobs:
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           message: |
             ❌ Availability bot FAILED.
+            CI on main: ${{ steps.ci-status.outputs.ci_conclusion }}
             Check: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
