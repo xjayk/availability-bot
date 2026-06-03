@@ -2,16 +2,17 @@
 
 - [ ] Create Telegram bot via @BotFather and save token
 - [ ] Retrieve Telegram chat ID from `getUpdates` endpoint
-- [ ] Inspect company login page and identify CSS selectors
-- [ ] Inspect company status/availability page and identify CSS selectors
 - [ ] Set all required GitHub Secrets (Settings → Secrets and variables → Actions)
 - [ ] Run workflow manually from Actions tab to verify
-- [ ] Adjust cron schedule in `availability.yml` for your timezone
 - [ ] Verify Telegram notifications fire on success and failure
 
 # Future Ideas
 
-- [ ] Add support for different statuses on different days (e.g. "In Office" vs "Remote")
-- [ ] Handle multi-factor authentication if the site adds it later
-- [ ] Send a daily summary instead of per-status messages
-- [ ] Add a webhook fallback alongside Telegram
+- [ ] **Multi-day scheduling** — different status per weekday (e.g. "available" Mon/Wed/Fri only)
+- [ ] **Calendar-aware skip** — read a GCal/iCal feed and skip PTO / holidays automatically
+- [ ] **Dry-run mode** — navigate and screenshot without actually toggling status, for safe testing
+- [ ] **Multi-site support** — set status on multiple portals in a single run
+- [ ] **Structured JSON logging** — parseable logs for debugging and metrics
+- [ ] **TOTP / MFA support** — generate 2FA codes from a stored secret when the site enforces MFA
+- [ ] **Webhook fallback** — send notifications to Slack / Discord alongside Telegram
+- [ ] **Availability dashboard** — GitHub Pages site showing a history of status changes
