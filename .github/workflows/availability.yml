@@ -1,0 +1,71 @@
+name: Set Daily Availability
+
+on:
+  schedule:
+    - cron: '0 13 * * 1-5'
+  workflow_dispatch:
+
+jobs:
+  set-availability:
+    runs-on: ubuntu-latest
+    outputs:
+      result: ${{ steps.run-script.outputs.result }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install playwright
+          playwright install chromium --with-deps
+
+      - name: Run availability script
+        id: run-script
+        env:
+          LOGIN_URL: ${{ secrets.LOGIN_URL }}
+          USERNAME: ${{ secrets.USERNAME }}
+          PASSWORD: ${{ secrets.PASSWORD }}
+          STATUS_URL: ${{ secrets.STATUS_URL }}
+          STATUS_CHOICE: ${{ secrets.STATUS_CHOICE }}
+          USERNAME_SELECTOR: ${{ secrets.USERNAME_SELECTOR }}
+          PASSWORD_SELECTOR: ${{ secrets.PASSWORD_SELECTOR }}
+          SUBMIT_SELECTOR: ${{ secrets.SUBMIT_SELECTOR }}
+          STATUS_BUTTON_SELECTOR: ${{ secrets.STATUS_BUTTON_SELECTOR }}
+          SAVE_BUTTON_SELECTOR: ${{ secrets.SAVE_BUTTON_SELECTOR }}
+        run: python set_availability.py
+
+      - name: Upload screenshot (for debugging)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: |
+            status-confirmation.png
+            error-screenshot.png
+          retention-days: 3
+
+      - name: Notify via Telegram on success
+        if: steps.run-script.outputs.result == 'success'
+        uses: appleboy/telegram-action@v1
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            ✅ Availability set to "${{ secrets.STATUS_CHOICE }}" for today.
+            $(date '+%Y-%m-%d %H:%M UTC')
+
+      - name: Notify via Telegram on failure
+        if: steps.run-script.outputs.result == 'failure' || failure()
+        uses: appleboy/telegram-action@v1
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            ❌ FAILED to set availability.
+            Check: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
