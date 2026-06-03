@@ -5,7 +5,8 @@ from playwright.sync_api import sync_playwright
 BASE_URL = os.environ["BASE_URL"]
 USERNAME = os.environ["USERNAME"]
 PASSWORD = os.environ["PASSWORD"]
-STATUS_CHOICE = os.environ.get("STATUS_CHOICE", "available")
+_raw_status = os.environ.get("STATUS_CHOICE", "available")
+STATUS_CHOICE = _raw_status.lower()
 
 PAGE_TIMEOUT = int(os.environ.get("PAGE_TIMEOUT", "30000"))
 MAX_RETRIES = int(os.environ.get("MAX_RETRIES", "3"))
@@ -18,7 +19,8 @@ def validate_env():
         raise SystemExit(f"Missing required env vars: {', '.join(missing)}")
     if STATUS_CHOICE not in ("available", "unavailable"):
         raise SystemExit(
-            f"STATUS_CHOICE must be 'available' or 'unavailable', got '{STATUS_CHOICE}'"
+            f"STATUS_CHOICE must be 'available' or 'unavailable' (case-insensitive), "
+            f"got '{_raw_status}'"
         )
 
 
@@ -36,9 +38,7 @@ def attempt_set_status():
                 timeout=PAGE_TIMEOUT,
             )
 
-            page.wait_for_selector("input#edit-name", timeout=PAGE_TIMEOUT)
             page.fill("input#edit-name", USERNAME)
-            page.wait_for_selector("input#edit-pass", timeout=PAGE_TIMEOUT)
             page.fill("input#edit-pass", PASSWORD)
             page.click("input#edit-submit")
 
