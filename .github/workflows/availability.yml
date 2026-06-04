@@ -34,7 +34,7 @@ jobs:
   #           core.setOutput('conclusion', lastRun.conclusion);
   #     - name: Notify Telegram — Gate Skipped
   #       if: steps.check.outputs.proceed == 'no_run'
-  #       uses: appleboy/telegram-action@v1
+  #       uses: appleboy/telegram-action@v1.0.0
   #       with:
   #         to: ${{ secrets.TELEGRAM_CHAT_ID }}
   #         token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -42,7 +42,7 @@ jobs:
   #           ⚠️ Availability bot SKIPPED — no CI runs found on main.
   #     - name: Notify Telegram — Gate Failed
   #       if: steps.check.outputs.proceed == 'fail'
-  #       uses: appleboy/telegram-action@v1
+  #       uses: appleboy/telegram-action@v1.0.0
   #       with:
   #         to: ${{ secrets.TELEGRAM_CHAT_ID }}
   #         token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -112,7 +112,7 @@ jobs:
 
       - name: Notify Telegram (Success)
         if: steps.run.outputs.result == 'success'
-        uses: appleboy/telegram-action@v1
+        uses: appleboy/telegram-action@v1.0.0
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -123,7 +123,7 @@ jobs:
 
       - name: Notify Telegram (Failure / Unknown)
         if: steps.run.outputs.result != 'success'
-        uses: appleboy/telegram-action@v1
+        uses: appleboy/telegram-action@v1.0.0
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
