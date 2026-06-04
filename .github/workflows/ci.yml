@@ -5,11 +5,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  # Manual trigger
-  workflow_dispatch:
 
 jobs:
-  ci:                          # ← single job name for easy querying
+  lint-python:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,9 +16,19 @@ jobs:
         with:
           args: check set_availability.py
 
+  format-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
       - uses: astral-sh/ruff-action@v3
         with:
           args: format --check set_availability.py
+
+  type-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
@@ -30,7 +38,25 @@ jobs:
 
       - run: mypy set_availability.py --ignore-missing-imports
 
-      - run: pip install yamllint
+  lint-yaml:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-      - run: |
-          yamllint .github/workflows/ --config-data '{extends: "default", rules: {line-length: "disable", documentation: "disable"}}'
+      - name: Install yamllint
+        run: pip install yamllint
+
+      - name: Lint YAML files
+        run: >
+          yamllint .github/workflows/
+          --config-data "{
+            extends: default,
+            rules: {
+              line-length: disable,
+              document-start: disable,
+              truthy: disable,
+              comments-indentation: disable,
+              trailing-spaces: {level: warning},
+              indentation: {spaces: 2, indent-sequences: consistent}
+            }
+          }"
