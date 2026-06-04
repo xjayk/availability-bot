@@ -71,8 +71,6 @@ jobs:
       outputs:
         result: ${{ steps.run.outputs.result }}
         
-    build:
-      runs-on: ubuntu-latest
       steps:
         - uses: actions/checkout@v4
 
