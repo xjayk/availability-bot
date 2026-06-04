@@ -75,10 +75,12 @@ jobs:
           BASE_URL: ${{ secrets.BASE_URL }}
           USERNAME: ${{ secrets.USERNAME }}
           PASSWORD: ${{ secrets.PASSWORD }}
-          STATUS_CHOICE: ${{ secrets.STATUS_CHOICE }}
-          PAGE_TIMEOUT: ${{ secrets.PAGE_TIMEOUT }}
-          MAX_RETRIES: ${{ secrets.MAX_RETRIES }}
-          RETRY_DELAY: ${{ secrets.RETRY_DELAY }}
+          
+          STATUS_CHOICE: ${{ vars.STATUS_CHOICE }}
+          PAGE_TIMEOUT: ${{ vars.PAGE_TIMEOUT }}
+          MAX_RETRIES: ${{ vars.MAX_RETRIES }}
+          RETRY_DELAY: ${{ vars.RETRY_DELAY }}
+        
         run: python set_availability.py
 
       - uses: actions/upload-artifact@v4
