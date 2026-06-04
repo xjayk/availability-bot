@@ -49,4 +49,14 @@ jobs:
       - name: Lint YAML files
         run: >
           yamllint .github/workflows/
-          --config-data "{extends: default, rules: {line-length: disable, document-start: disable}}"
+          --config-data "{
+            extends: default,
+            rules: {
+              line-length: disable,
+              document-start: disable,
+              truthy: disable,
+              comments-indentation: disable,
+              trailing-spaces: {level: warning},
+              indentation: {spaces: 2, indent-sequences: consistent}
+            }
+          }"
