@@ -5,6 +5,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Manual trigger
+  workflow_dispatch:
 
 jobs:
   ci:                          # ← single job name for easy querying
