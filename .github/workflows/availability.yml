@@ -65,83 +65,85 @@ jobs:
   #   runs-on: ubuntu-latest
   #   outputs:
   #     result: ${{ steps.run.outputs.result }}
-    
+
     set-availability:
       runs-on: ubuntu-latest
       outputs:
         result: ${{ steps.run.outputs.result }}
+        
+    build:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
 
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          playwright install chromium --with-deps
-
-      - name: Set availability
-        id: run
-        env:
-          BASE_URL: ${{ secrets.BASE_URL }}
-          USERNAME: ${{ secrets.USERNAME }}
-          PASSWORD: ${{ secrets.PASSWORD }}
-          STATUS_CHOICE: ${{ secrets.STATUS_CHOICE }}
-          PAGE_TIMEOUT: ${{ secrets.PAGE_TIMEOUT }}
-          MAX_RETRIES: ${{ secrets.MAX_RETRIES }}
-          RETRY_DELAY: ${{ secrets.RETRY_DELAY }}
-        run: python set_availability.py
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: screenshots
-          path: |
-            final-status.png
-            error-screenshot.png
-          retention-days: 3
-
-      - name: Check last CI status (informational only)
-        id: ci-status
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { data: runs } = await github.rest.actions.listWorkflowRuns({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'ci.yml',
-              branch: 'main',
-              status: 'completed',
-              per_page: 1,
-            });
-            if (runs.workflow_runs.length > 0) {
-              core.setOutput('ci_conclusion', runs.workflow_runs[0].conclusion);
-              core.setOutput('ci_url', runs.workflow_runs[0].html_url);
-            } else {
-              core.setOutput('ci_conclusion', 'no_runs');
-            }
-
-      - name: Notify Telegram (Success)
-        if: steps.run.outputs.result == 'success'
-        uses: appleboy/telegram-action@v1
-        with:
-          to: ${{ secrets.TELEGRAM_CHAT_ID }}
-          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          message: |
-            ✅ Availability set to "${{ secrets.STATUS_CHOICE }}" for tomorrow.
-            CI on main: ${{ steps.ci-status.outputs.ci_conclusion }}
-            $(date '+%Y-%m-%d %H:%M UTC')
-
-      - name: Notify Telegram (Failure / Unknown)
-        if: steps.run.outputs.result != 'success'
-        uses: appleboy/telegram-action@v1
-        with:
-          to: ${{ secrets.TELEGRAM_CHAT_ID }}
-          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          message: |
-            ❌ Availability bot FAILED.
-            CI on main: ${{ steps.ci-status.outputs.ci_conclusion }}
-            Check: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        - uses: actions/setup-python@v5
+          with:
+            python-version: '3.12'
+  
+        - name: Install dependencies
+          run: |
+            pip install -r requirements.txt
+            playwright install chromium --with-deps
+  
+        - name: Set availability
+          id: run
+          env:
+            BASE_URL: ${{ secrets.BASE_URL }}
+            USERNAME: ${{ secrets.USERNAME }}
+            PASSWORD: ${{ secrets.PASSWORD }}
+            STATUS_CHOICE: ${{ secrets.STATUS_CHOICE }}
+            PAGE_TIMEOUT: ${{ secrets.PAGE_TIMEOUT }}
+            MAX_RETRIES: ${{ secrets.MAX_RETRIES }}
+            RETRY_DELAY: ${{ secrets.RETRY_DELAY }}
+          run: python set_availability.py
+  
+        - uses: actions/upload-artifact@v4
+          if: always()
+          with:
+            name: screenshots
+            path: |
+              final-status.png
+              error-screenshot.png
+            retention-days: 3
+  
+        - name: Check last CI status (informational only)
+          id: ci-status
+          uses: actions/github-script@v7
+          with:
+            script: |
+              const { data: runs } = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'ci.yml',
+                branch: 'main',
+                status: 'completed',
+                per_page: 1,
+              });
+              if (runs.workflow_runs.length > 0) {
+                core.setOutput('ci_conclusion', runs.workflow_runs[0].conclusion);
+                core.setOutput('ci_url', runs.workflow_runs[0].html_url);
+              } else {
+                core.setOutput('ci_conclusion', 'no_runs');
+              }
+  
+        - name: Notify Telegram (Success)
+          if: steps.run.outputs.result == 'success'
+          uses: appleboy/telegram-action@v1
+          with:
+            to: ${{ secrets.TELEGRAM_CHAT_ID }}
+            token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+            message: |
+              ✅ Availability set to "${{ secrets.STATUS_CHOICE }}" for tomorrow.
+              CI on main: ${{ steps.ci-status.outputs.ci_conclusion }}
+              $(date '+%Y-%m-%d %H:%M UTC')
+  
+        - name: Notify Telegram (Failure / Unknown)
+          if: steps.run.outputs.result != 'success'
+          uses: appleboy/telegram-action@v1
+          with:
+            to: ${{ secrets.TELEGRAM_CHAT_ID }}
+            token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+            message: |
+              ❌ Availability bot FAILED.
+              CI on main: ${{ steps.ci-status.outputs.ci_conclusion }}
+              Check: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
