@@ -1,11 +1,14 @@
+import contextlib
 import os
 import time
+
 from playwright.sync_api import sync_playwright
 
-BASE_URL = os.environ["BASE_URL"]
-USERNAME = os.environ["USERNAME"]
-PASSWORD = os.environ["PASSWORD"]
-STATUS_CHOICE = os.environ.get("STATUS_CHOICE", "available")
+BASE_URL = os.environ.get("BASE_URL")
+USERNAME = os.environ.get("USERNAME")
+PASSWORD = os.environ.get("PASSWORD")
+_raw_status = os.environ.get("STATUS_CHOICE", "available")
+STATUS_CHOICE = _raw_status.lower()
 
 PAGE_TIMEOUT = int(os.environ.get("PAGE_TIMEOUT", "30000"))
 MAX_RETRIES = int(os.environ.get("MAX_RETRIES", "3"))
@@ -13,12 +16,14 @@ RETRY_DELAY = int(os.environ.get("RETRY_DELAY", "10"))
 
 
 def validate_env():
-    missing = [v for v in ("BASE_URL", "USERNAME", "PASSWORD") if v not in os.environ]
+    required = (("BASE_URL", BASE_URL), ("USERNAME", USERNAME), ("PASSWORD", PASSWORD))
+    missing = [v for v, val in required if val is None]
     if missing:
         raise SystemExit(f"Missing required env vars: {', '.join(missing)}")
     if STATUS_CHOICE not in ("available", "unavailable"):
         raise SystemExit(
-            f"STATUS_CHOICE must be 'available' or 'unavailable', got '{STATUS_CHOICE}'"
+            f"STATUS_CHOICE must be 'available' or 'unavailable' (case-insensitive), "
+            f"got '{_raw_status}'"
         )
 
 
@@ -36,11 +41,9 @@ def attempt_set_status():
                 timeout=PAGE_TIMEOUT,
             )
 
-            page.wait_for_selector("input#edit-name", timeout=PAGE_TIMEOUT)
-            page.fill("input#edit-name", USERNAME)
-            page.wait_for_selector("input#edit-pass", timeout=PAGE_TIMEOUT)
-            page.fill("input#edit-pass", PASSWORD)
-            page.click("input#edit-submit")
+            page.fill("input#edit-name", USERNAME, timeout=PAGE_TIMEOUT)
+            page.fill("input#edit-pass", PASSWORD, timeout=PAGE_TIMEOUT)
+            page.click("input#edit-submit", timeout=PAGE_TIMEOUT)
 
             page.wait_for_function(
                 '!window.location.href.includes("/user/login")',
@@ -79,10 +82,8 @@ def attempt_set_status():
 
         except Exception as e:
             print(f"ERROR: {e}")
-            try:
+            with contextlib.suppress(Exception):
                 page.screenshot(path="error-screenshot.png", full_page=True)
-            except Exception:
-                pass
             raise
 
         finally:

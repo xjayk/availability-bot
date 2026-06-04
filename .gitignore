@@ -1,6 +1,7 @@
-*.pyc
-__pycache__/
-*.png
 .DS_Store
 .venv/
 venv/
+_archive/
+*.pyc
+__pycache__/
+*.png
