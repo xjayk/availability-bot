@@ -75,10 +75,45 @@ def get_success_message():
     )
 
 
+def _build_toggle_urls():
+    """Build list of toggle URLs. On Friday, may include Saturday + Monday."""
+    today = _today()
+    urls = []
+
+    if today.weekday() == 4:  # Friday
+        work_saturday = (
+            os.environ.get("WORK_SATURDAY", "false").lower() == "true"
+        )
+        if work_saturday:
+            saturday = today + timedelta(days=1)
+            print(
+                f"Friday — including Saturday {saturday.isoformat()}"
+            )
+            urls.append(
+                f"{BASE_URL}/change-availability-for-tomorrow/"
+                f"{STATUS_CHOICE}?date={saturday.isoformat()}"
+            )
+        monday = today + timedelta(days=3)
+        print(
+            f"Friday — including Monday {monday.isoformat()}"
+        )
+        urls.append(
+            f"{BASE_URL}/change-availability-for-tomorrow/"
+            f"{STATUS_CHOICE}?date={monday.isoformat()}"
+        )
+    else:
+        urls.append(
+            f"{BASE_URL}/change-availability-for-tomorrow/{STATUS_CHOICE}"
+        )
+    return urls
+
+
 def attempt_set_status():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        context = browser.new_context(locale="en-US", timezone_id="America/New_York")
+        context = browser.new_context(
+            locale="en-US", timezone_id="America/New_York"
+        )
         page = context.new_page()
 
         try:
@@ -119,10 +154,13 @@ def attempt_set_status():
                     or "Make yourself unavailable" in page_content
                 ):
                     print("Confirmation dialog detected.")
-	                page.screenshot(path="confirmation-dialog.png", full_page=True)
-	                # Try clicking the available/unavailable link
+                    page.screenshot(
+                        path="confirmation-dialog.png", full_page=True
+                    )
                     try:
-                  		page.click("text=Make yourself", timeout=10000)
+                        page.click(
+                            "text=Make yourself", timeout=10000
+                        )
                         print("Clicked confirmation.")
                     except Exception:
                         print(
@@ -130,8 +168,6 @@ def attempt_set_status():
                             "the GET request may have already "
                             "toggled status."
                         )
-					
-					# Wait for redirect back to profile and BigPipe to render
                     page.wait_for_url(
                         f"{BASE_URL}/user/*",
                         timeout=PAGE_TIMEOUT,
@@ -139,29 +175,18 @@ def attempt_set_status():
                     page.wait_for_timeout(5000)
 
                 page_content = page.content()
-                if (
-                    "You're made available" in page_content
-                    or "You're made unavailable" in page_content
-                ):
+                if "You're made available" in page_content or \
+                   "You're made unavailable" in page_content:
                     print("SUCCESS: Status change confirmed via message")
                     results.append("success")
                 elif f"availunavail-header-top {STATUS_CHOICE}" in page_content:
-                    print(
-                        f"SUCCESS: Status changed to {STATUS_CHOICE} "
-                        "(verified via header class)"
-                    )
+                    print("SUCCESS: Status change confirmed via header")
                     results.append("success")
                 elif "/user/" in page.url:
-                    print(
-                        "Back on profile page — "
-                        "assuming success (status was likely set)"
-                        "toggled status."
-                    )
+                    print("Back on profile page — assuming success")
                     results.append("success")
                 else:
-                    print(
-                        "WARNING: Could not verify status change via message or header"
-                    )
+                    print("WARNING: Could not verify status change")
                     results.append("unknown")
 
             page.screenshot(path="final-status.png", full_page=True)
