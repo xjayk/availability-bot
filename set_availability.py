@@ -1,9 +1,9 @@
 import contextlib
 import os
 import time
-from datetime import date, timedelta
-from datetime import datetime, timedelta
 import zoneinfo
+from datetime import date, datetime, timedelta
+
 from playwright.sync_api import sync_playwright
 
 BASE_URL = os.environ.get("BASE_URL")
@@ -18,10 +18,16 @@ RETRY_DELAY = int(os.environ.get("RETRY_DELAY") or "10")
 
 
 def validate_env():
-    required = (("BASE_URL", BASE_URL), ("USERNAME", USERNAME), ("PASSWORD", PASSWORD))
+    required = (
+        ("BASE_URL", BASE_URL),
+        ("USERNAME", USERNAME),
+        ("PASSWORD", PASSWORD),
+    )
     missing = [v for v, val in required if val is None]
     if missing:
-        raise SystemExit(f"Missing required env vars: {', '.join(missing)}")
+        raise SystemExit(
+            f"Missing required env vars: {', '.join(missing)}"
+        )
     if STATUS_CHOICE not in ("available", "unavailable"):
         raise SystemExit(
             f"STATUS_CHOICE must be 'available' or 'unavailable' "
@@ -29,15 +35,20 @@ def validate_env():
         )
 
 
+def _today():
+    """Return the current date in the America/New_York timezone."""
+    return datetime.now(zoneinfo.ZoneInfo("America/New_York")).date()
+
+
 def get_toggle_url():
     """Build the toggle URL. On Friday, skip Saturday and target Monday."""
-    today = date.today()
-def get_toggle_url():
-    """Build the toggle URL. On Friday, skip Saturday and target Monday instead."""
-    today = datetime.now(zoneinfo.ZoneInfo("America/New_York")).date()
+    today = _today()
     if today.weekday() == 4:  # Friday
         monday = today + timedelta(days=3)  # skip Sat/Sun
-        print(f"Friday detected — targeting Monday {monday.isoformat()} instead of Saturday")
+        print(
+            f"Friday detected — targeting Monday {monday.isoformat()} "
+            "instead of Saturday"
+        )
         return (
             f"{BASE_URL}/change-availability-for-tomorrow/"
             f"{STATUS_CHOICE}?date={monday.isoformat()}"
@@ -46,8 +57,8 @@ def get_toggle_url():
 
 
 def get_success_message():
-    """Return the expected success message, accounting for Friday's Monday target."""
-    today = datetime.now(zoneinfo.ZoneInfo("America/New_York")).date()
+    """Return the expected success message, accounting for Friday."""
+    today = _today()
     if today.weekday() == 4:  # Friday
         return (
             "You're made available for Monday"
@@ -95,18 +106,24 @@ def attempt_set_status():
                 wait_until="domcontentloaded",
                 timeout=PAGE_TIMEOUT,
             )
-            
-            expected_message = get_success_message()
-        
-            # Wait dynamically for either the success message or the updated header class
-            page.locator(f'text="{expected_message}", .availunavail-header-top.{STATUS_CHOICE}').wait_for(timeout=PAGE_TIMEOUT)
-            page_content = page.content()
 
+            expected_message = get_success_message()
+
+            # Wait for either the success message or the updated header class
+            page.wait_for_selector(
+                f'text="{expected_message}", '
+                f".availunavail-header-top.{STATUS_CHOICE}",
+                timeout=PAGE_TIMEOUT,
+            )
+            page_content = page.content()
 
             if expected_message in page_content:
                 print(f"SUCCESS: {expected_message}")
                 result = "success"
-            elif f"availunavail-header-top {STATUS_CHOICE}" in page_content:
+            elif (
+                f"availunavail-header-top {STATUS_CHOICE}"
+                in page_content
+            ):
                 print(
                     f"SUCCESS: Status changed to {STATUS_CHOICE} "
                     "(verified via header class)"
