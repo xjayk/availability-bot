@@ -73,9 +73,7 @@ def get_success_message():
 def attempt_set_status():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        context = browser.new_context(
-            locale="en-US", timezone_id="America/New_York"
-        )
+        context = browser.new_context(locale="en-US", timezone_id="America/New_York")
         page = context.new_page()
 
         try:
@@ -108,8 +106,7 @@ def attempt_set_status():
             expected_message = get_success_message()
 
             page.wait_for_selector(
-                f'text="{expected_message}", '
-                f".availunavail-header-top.{STATUS_CHOICE}",
+                f'text="{expected_message}", .availunavail-header-top.{STATUS_CHOICE}',
                 timeout=PAGE_TIMEOUT,
             )
             page_content = page.content()
@@ -124,10 +121,7 @@ def attempt_set_status():
                 )
                 result = "success"
             else:
-                print(
-                    "WARNING: Could not verify status change "
-                    "via message or header."
-                )
+                print("WARNING: Could not verify status change via message or header.")
                 result = "unknown"
 
             page.screenshot(path="final-status.png", full_page=True)
