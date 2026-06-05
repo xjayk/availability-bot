@@ -110,7 +110,7 @@ jobs:
             } else {
               core.setOutput('ci_conclusion', 'no_runs');
             }
-            
+
       - name: Build notification message
         id: notify
         run: |
