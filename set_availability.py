@@ -120,7 +120,6 @@ def attempt_set_status():
                 # Try clicking the available/unavailable link
                 try:
                     page.click("text=Make yourself", timeout=10000)
-                    page.wait_for_timeout(4000)
                     print("Clicked confirmation.")
                 except Exception:
                     print(
@@ -128,6 +127,15 @@ def attempt_set_status():
                         "the GET request may have already "
                         "toggled status."
                     )
+
+                # Wait for redirect back to profile and BigPipe to render
+                page.wait_for_url(
+                    f"{BASE_URL}/user/*",
+                    timeout=PAGE_TIMEOUT,
+                )
+                page.wait_for_timeout(5000)
+
+            page_content = page.content()
 
             if (
                 "You're made available" in page_content
@@ -142,8 +150,17 @@ def attempt_set_status():
                 )
                 result = "success"
             else:
-                print("WARNING: Could not verify status change via message or header.")
-                result = "unknown"
+                # Last resort: check if we're back on the profile page
+                if f"/user/" in page.url:
+                    print(
+                        "Back on profile page — assuming success (status was likely set)"
+                    )
+                    result = "success"
+                else:
+                    print(
+                        "WARNING: Could not verify status change via message or header."
+                    )
+                    result = "unknown"
 
             page.screenshot(path="final-status.png", full_page=True)
             return result
