@@ -84,9 +84,9 @@ def attempt_set_status():
                 timeout=PAGE_TIMEOUT,
             )
 
-            page.fill("input#edit-name", USERNAME, timeout=PAGE_TIMEOUT)
-            page.fill("input#edit-pass", PASSWORD, timeout=PAGE_TIMEOUT)
-            page.click("input#edit-submit", timeout=PAGE_TIMEOUT)
+            page.fill("#edit-name", USERNAME, timeout=PAGE_TIMEOUT)
+            page.fill("#edit-pass", PASSWORD, timeout=PAGE_TIMEOUT)
+            page.click("#edit-submit", timeout=PAGE_TIMEOUT)
 
             page.wait_for_function(
                 '!window.location.href.includes("/user/login")',
