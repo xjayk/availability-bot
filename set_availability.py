@@ -76,7 +76,6 @@ def attempt_set_status():
                 wait_until="domcontentloaded",
                 timeout=PAGE_TIMEOUT,
             )
-            page.wait_for_timeout(5000)  # let Drupal BigPipe render the form
 
             page.fill("input#edit-name", USERNAME, timeout=PAGE_TIMEOUT)
             page.fill("input#edit-pass", PASSWORD, timeout=PAGE_TIMEOUT)
@@ -90,16 +89,19 @@ def attempt_set_status():
 
             toggle_url = get_toggle_url()
             print(f"Navigating to {toggle_url} ...")
+
             page.goto(
                 toggle_url,
                 wait_until="domcontentloaded",
                 timeout=PAGE_TIMEOUT,
             )
-
-            page.wait_for_timeout(4000)  # let Drupal BigPipe render
-
-            page_content = page.content()
+            
             expected_message = get_success_message()
+        
+            # Wait dynamically for either the success message or the updated header class
+            page.locator(f'text="{expected_message}", .availunavail-header-top.{STATUS_CHOICE}').wait_for(timeout=PAGE_TIMEOUT)
+            page_content = page.content()
+
 
             if expected_message in page_content:
                 print(f"SUCCESS: {expected_message}")
