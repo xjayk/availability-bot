@@ -44,39 +44,29 @@ def _build_toggle_urls():
     urls = []
 
     if today.weekday() == 4:  # Friday
-        work_saturday = (
-            os.environ.get("WORK_SATURDAY", "false").lower() == "true"
-        )
+        work_saturday = os.environ.get("WORK_SATURDAY", "false").lower() == "true"
         if work_saturday:
             saturday = today + timedelta(days=1)
-            print(
-                f"Friday — including Saturday {saturday.isoformat()}"
-            )
+            print(f"Friday — including Saturday {saturday.isoformat()}")
             urls.append(
                 f"{BASE_URL}/change-availability-for-tomorrow/"
                 f"{STATUS_CHOICE}?date={saturday.isoformat()}"
             )
         monday = today + timedelta(days=3)
-        print(
-            f"Friday — including Monday {monday.isoformat()}"
-        )
+        print(f"Friday — including Monday {monday.isoformat()}")
         urls.append(
             f"{BASE_URL}/change-availability-for-tomorrow/"
             f"{STATUS_CHOICE}?date={monday.isoformat()}"
         )
     else:
-        urls.append(
-            f"{BASE_URL}/change-availability-for-tomorrow/{STATUS_CHOICE}"
-        )
+        urls.append(f"{BASE_URL}/change-availability-for-tomorrow/{STATUS_CHOICE}")
     return urls
 
 
 def attempt_set_status():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        context = browser.new_context(
-            locale="en-US", timezone_id="America/New_York"
-        )
+        context = browser.new_context(locale="en-US", timezone_id="America/New_York")
         page = context.new_page()
 
         try:
@@ -117,13 +107,9 @@ def attempt_set_status():
                     or "Make yourself unavailable" in page_content
                 ):
                     print("Confirmation dialog detected.")
-                    page.screenshot(
-                        path="confirmation-dialog.png", full_page=True
-                    )
+                    page.screenshot(path="confirmation-dialog.png", full_page=True)
                     try:
-                        page.click(
-                            "text=Make yourself", timeout=10000
-                        )
+                        page.click("text=Make yourself", timeout=10000)
                         print("Clicked confirmation.")
                     except Exception:
                         print(
@@ -138,8 +124,10 @@ def attempt_set_status():
                     page.wait_for_timeout(5000)
 
                 page_content = page.content()
-                if "You're made available" in page_content or \
-                   "You're made unavailable" in page_content:
+                if (
+                    "You're made available" in page_content
+                    or "You're made unavailable" in page_content
+                ):
                     print("SUCCESS: Status change confirmed via message")
                     results.append("success")
                 elif f"availunavail-header-top {STATUS_CHOICE}" in page_content:
@@ -168,6 +156,7 @@ def attempt_set_status():
 
         finally:
             browser.close()
+
 
 def main():
     validate_env()
