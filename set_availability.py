@@ -151,14 +151,16 @@ def attempt_set_status():
                 result = "success"
             else:
                 # Last resort: check if we're back on the profile page
-                if f"/user/" in page.url:
+                if "/user/" in page.url:
                     print(
-                        "Back on profile page — assuming success (status was likely set)"
+                        "Back on profile page — "
+                        "assuming success (status was likely set)"
+                        "toggled status."
                     )
                     result = "success"
                 else:
                     print(
-                        "WARNING: Could not verify status change via message or header."
+                        "WARNING: Could not verify status change via message or header"
                     )
                     result = "unknown"
 
