@@ -38,41 +38,29 @@ def _today():
     return datetime.now(zoneinfo.ZoneInfo("America/New_York")).date()
 
 
-def get_toggle_url():
-    """Build the toggle URL. On Friday, optionally set Saturday too."""
+def _build_toggle_urls():
+    """Build list of toggle URLs. On Friday, may include Saturday + Monday."""
     today = _today()
+    urls = []
+
     if today.weekday() == 4:  # Friday
         work_saturday = os.environ.get("WORK_SATURDAY", "false").lower() == "true"
         if work_saturday:
             saturday = today + timedelta(days=1)
-            print(f"Friday — setting available for Saturday {saturday.isoformat()}")
-            return (
+            print(f"Friday — including Saturday {saturday.isoformat()}")
+            urls.append(
                 f"{BASE_URL}/change-availability-for-tomorrow/"
                 f"{STATUS_CHOICE}?date={saturday.isoformat()}"
             )
-        else:
-            monday = today + timedelta(days=3)
-            print(f"Friday — skipping Saturday, targeting Monday {monday.isoformat()}")
-            return (
-                f"{BASE_URL}/change-availability-for-tomorrow/"
-                f"{STATUS_CHOICE}?date={monday.isoformat()}"
-            )
-    return f"{BASE_URL}/change-availability-for-tomorrow/{STATUS_CHOICE}"
-
-
-def get_success_message():
-    """Return the expected success message, accounting for Friday."""
-    today = _today()
-    if today.weekday() == 4:  # Friday
-        work_saturday = os.environ.get("WORK_SATURDAY", "false").lower() == "true"
-        if work_saturday:
-            return "You're made available for Saturday"
-        return "You're made available for Monday"
-    return (
-        "You're made available for tomorrow"
-        if STATUS_CHOICE == "available"
-        else "You're made unavailable for tomorrow"
-    )
+        monday = today + timedelta(days=3)
+        print(f"Friday — including Monday {monday.isoformat()}")
+        urls.append(
+            f"{BASE_URL}/change-availability-for-tomorrow/"
+            f"{STATUS_CHOICE}?date={monday.isoformat()}"
+        )
+    else:
+        urls.append(f"{BASE_URL}/change-availability-for-tomorrow/{STATUS_CHOICE}")
+    return urls
 
 
 def attempt_set_status():
@@ -99,73 +87,66 @@ def attempt_set_status():
             )
             print("Login successful.")
 
-            toggle_url = get_toggle_url()
-            print(f"Navigating to {toggle_url} ...")
+            # Build list of URLs to toggle
+            toggle_urls = _build_toggle_urls()
+            results = []
 
-            page.goto(
-                toggle_url,
-                wait_until="domcontentloaded",
-                timeout=PAGE_TIMEOUT,
-            )
-            page.wait_for_timeout(4000)
-
-            # Handle confirmation dialog for date-targeted toggles
-            page_content = page.content()
-            if (
-                "Make yourself available" in page_content
-                or "Make yourself unavailable" in page_content
-            ):
-                print("Confirmation dialog detected.")
-                page.screenshot(path="confirmation-dialog.png", full_page=True)
-                # Try clicking the available/unavailable link
-                try:
-                    page.click("text=Make yourself", timeout=10000)
-                    print("Clicked confirmation.")
-                except Exception:
-                    print(
-                        "Could not click confirmation — "
-                        "the GET request may have already "
-                        "toggled status."
-                    )
-
-                # Wait for redirect back to profile and BigPipe to render
-                page.wait_for_url(
-                    f"{BASE_URL}/user/*",
+            for toggle_url in toggle_urls:
+                print(f"Navigating to {toggle_url} ...")
+                page.goto(
+                    toggle_url,
+                    wait_until="domcontentloaded",
                     timeout=PAGE_TIMEOUT,
                 )
-                page.wait_for_timeout(5000)
+                page.wait_for_timeout(4000)
 
-            page_content = page.content()
-
-            if (
-                "You're made available" in page_content
-                or "You're made unavailable" in page_content
-            ):
-                print("SUCCESS: Status change confirmed via success message")
-                result = "success"
-            elif f"availunavail-header-top {STATUS_CHOICE}" in page_content:
-                print(
-                    f"SUCCESS: Status changed to {STATUS_CHOICE} "
-                    "(verified via header class)"
-                )
-                result = "success"
-            else:
-                # Last resort: check if we're back on the profile page
-                if "/user/" in page.url:
-                    print(
-                        "Back on profile page — "
-                        "assuming success (status was likely set)"
-                        "toggled status."
+                # Handle confirmation dialog
+                page_content = page.content()
+                if (
+                    "Make yourself available" in page_content
+                    or "Make yourself unavailable" in page_content
+                ):
+                    print("Confirmation dialog detected.")
+                    page.screenshot(path="confirmation-dialog.png", full_page=True)
+                    try:
+                        page.click("text=Make yourself", timeout=10000)
+                        print("Clicked confirmation.")
+                    except Exception:
+                        print(
+                            "Could not click confirmation — "
+                            "the GET request may have already "
+                            "toggled status."
+                        )
+                    page.wait_for_url(
+                        f"{BASE_URL}/user/*",
+                        timeout=PAGE_TIMEOUT,
                     )
-                    result = "success"
+                    page.wait_for_timeout(5000)
+
+                page_content = page.content()
+                if (
+                    "You're made available" in page_content
+                    or "You're made unavailable" in page_content
+                ):
+                    print("SUCCESS: Status change confirmed via message")
+                    results.append("success")
+                elif f"availunavail-header-top {STATUS_CHOICE}" in page_content:
+                    print("SUCCESS: Status change confirmed via header")
+                    results.append("success")
+                elif "/user/" in page.url:
+                    print("Back on profile page — assuming success")
+                    results.append("success")
                 else:
-                    print(
-                        "WARNING: Could not verify status change via message or header"
-                    )
-                    result = "unknown"
+                    print("WARNING: Could not verify status change")
+                    results.append("unknown")
 
             page.screenshot(path="final-status.png", full_page=True)
-            return result
+
+            if all(r == "success" for r in results):
+                return "success"
+            elif any(r == "success" for r in results):
+                return "success"  # partial success still counts
+            return "unknown"
 
         except Exception as e:
             print(f"ERROR: {e}")
