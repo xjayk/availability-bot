@@ -2,7 +2,8 @@ import contextlib
 import os
 import time
 from datetime import date, timedelta
-
+from datetime import datetime, timedelta
+import zoneinfo
 from playwright.sync_api import sync_playwright
 
 BASE_URL = os.environ.get("BASE_URL")
