@@ -32,12 +32,12 @@ def validate_env():
 def get_toggle_url():
     """Build the toggle URL. On Friday, skip Saturday and target Monday."""
     today = date.today()
+def get_toggle_url():
+    """Build the toggle URL. On Friday, skip Saturday and target Monday instead."""
+    today = datetime.now(zoneinfo.ZoneInfo("America/New_York")).date()
     if today.weekday() == 4:  # Friday
         monday = today + timedelta(days=3)  # skip Sat/Sun
-        print(
-            f"Friday detected — targeting Monday {monday.isoformat()} "
-            "instead of Saturday"
-        )
+        print(f"Friday detected — targeting Monday {monday.isoformat()} instead of Saturday")
         return (
             f"{BASE_URL}/change-availability-for-tomorrow/"
             f"{STATUS_CHOICE}?date={monday.isoformat()}"
