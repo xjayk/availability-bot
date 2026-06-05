@@ -79,7 +79,7 @@ jobs:
           PAGE_TIMEOUT: ${{ vars.PAGE_TIMEOUT }}
           MAX_RETRIES: ${{ vars.MAX_RETRIES }}
           RETRY_DELAY: ${{ vars.RETRY_DELAY }}
-
+          WORK_SATURDAY: ${{ vars.WORK_SATURDAY }}
         run: python set_availability.py
 
       - uses: actions/upload-artifact@v4
@@ -111,6 +111,21 @@ jobs:
               core.setOutput('ci_conclusion', 'no_runs');
             }
 
+      - name: Build notification message
+        id: notify
+        run: |
+          if [ "$(date +%u)" = "5" ]; then
+            if [ "${{ vars.WORK_SATURDAY }}" = "true" ]; then
+              echo "label=for Saturday (Monday will be set separately)" >> "$GITHUB_OUTPUT"
+            else
+              echo "label=for Monday (Saturday skipped)" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "label=for tomorrow" >> "$GITHUB_OUTPUT"
+          fi
+          echo "status=${{ vars.STATUS_CHOICE }}" >> "$GITHUB_OUTPUT"
+          echo "timestamp=$(date '+%Y-%m-%d %H:%M UTC')" >> "$GITHUB_OUTPUT"
+
       - name: Notify Telegram (Success)
         if: steps.run.outputs.result == 'success'
         uses: appleboy/telegram-action@v1.0.0
@@ -118,9 +133,10 @@ jobs:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           message: |
-            ✅ Availability set to "${{ secrets.STATUS_CHOICE }}" for tomorrow.
+            ✅ Availability set to "${{ steps.notify.outputs.status }}" ${{ steps.notify.outputs.label }}.
             CI on main: ${{ steps.ci-status.outputs.ci_conclusion }}
-            $(date '+%Y-%m-%d %H:%M UTC')
+            ${{ steps.notify.outputs.timestamp }}
+          disable_web_page_preview: true
 
       - name: Notify Telegram (Failure / Unknown)
         if: steps.run.outputs.result != 'success'
@@ -132,3 +148,4 @@ jobs:
             ❌ Availability bot FAILED.
             CI on main: ${{ steps.ci-status.outputs.ci_conclusion }}
             Check: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          disable_web_page_preview: true
