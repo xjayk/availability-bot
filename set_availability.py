@@ -46,8 +46,8 @@ def get_toggle_url():
 
 
 def get_success_message():
-    """Return the expected success message, accounting for Friday (unique handling)."""
-    today = date.today()
+    """Return the expected success message, accounting for Friday's Monday target."""
+    today = datetime.now(zoneinfo.ZoneInfo("America/New_York")).date()
     if today.weekday() == 4:  # Friday
         return (
             "You're made available for Monday"
