@@ -1,7 +1,8 @@
 .DS_Store
+node_modules/
+_*
 .venv/
 venv/
-_archive/
 *.pyc
 __pycache__/
 *.png
