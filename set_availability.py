@@ -1,8 +1,8 @@
 import contextlib
 import os
 import time
-
 from datetime import date, timedelta
+
 from playwright.sync_api import sync_playwright
 
 BASE_URL = os.environ.get("BASE_URL")
@@ -23,17 +23,20 @@ def validate_env():
         raise SystemExit(f"Missing required env vars: {', '.join(missing)}")
     if STATUS_CHOICE not in ("available", "unavailable"):
         raise SystemExit(
-            f"STATUS_CHOICE must be 'available' or 'unavailable' (case-insensitive), "
-            f"got '{_raw_status}'"
+            f"STATUS_CHOICE must be 'available' or 'unavailable' "
+            f"(case-insensitive), got '{_raw_status}'"
         )
 
 
 def get_toggle_url():
-    """Build the toggle URL. On Friday, skip Saturday and target Monday instead."""
+    """Build the toggle URL. On Friday, skip Saturday and target Monday."""
     today = date.today()
     if today.weekday() == 4:  # Friday
         monday = today + timedelta(days=3)  # skip Sat/Sun
-        print(f"Friday detected — targeting Monday {monday.isoformat()} instead of Saturday")
+        print(
+            f"Friday detected — targeting Monday {monday.isoformat()} "
+            "instead of Saturday"
+        )
         return (
             f"{BASE_URL}/change-availability-for-tomorrow/"
             f"{STATUS_CHOICE}?date={monday.isoformat()}"
@@ -42,7 +45,7 @@ def get_toggle_url():
 
 
 def get_success_message():
-    """Return the expected success message, accounting for Friday's Monday target."""
+    """Return the expected success message, accounting for Friday (unique handling)."""
     today = date.today()
     if today.weekday() == 4:  # Friday
         return (
@@ -60,7 +63,9 @@ def get_success_message():
 def attempt_set_status():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        context = browser.new_context(locale="en-US", timezone_id="America/New_York")
+        context = browser.new_context(
+            locale="en-US", timezone_id="America/New_York"
+        )
         page = context.new_page()
 
         try:
@@ -84,9 +89,13 @@ def attempt_set_status():
 
             toggle_url = get_toggle_url()
             print(f"Navigating to {toggle_url} ...")
-            page.goto(toggle_url, wait_until="domcontentloaded", timeout=PAGE_TIMEOUT)
+            page.goto(
+                toggle_url,
+                wait_until="domcontentloaded",
+                timeout=PAGE_TIMEOUT,
+            )
 
-            page.wait_for_timeout(4000)  # let Drupal BigPipe render the response
+            page.wait_for_timeout(4000)  # let Drupal BigPipe render
 
             page_content = page.content()
             expected_message = get_success_message()
@@ -101,7 +110,10 @@ def attempt_set_status():
                 )
                 result = "success"
             else:
-                print("WARNING: Could not verify status change via message or header.")
+                print(
+                    "WARNING: Could not verify status change "
+                    "via message or header."
+                )
                 result = "unknown"
 
             page.screenshot(path="final-status.png", full_page=True)
