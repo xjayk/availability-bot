@@ -38,43 +38,6 @@ def _today():
     return datetime.now(zoneinfo.ZoneInfo("America/New_York")).date()
 
 
-def get_toggle_url():
-    """Build the toggle URL. On Friday, optionally set Saturday too."""
-    today = _today()
-    if today.weekday() == 4:  # Friday
-        work_saturday = os.environ.get("WORK_SATURDAY", "false").lower() == "true"
-        if work_saturday:
-            saturday = today + timedelta(days=1)
-            print(f"Friday — setting available for Saturday {saturday.isoformat()}")
-            return (
-                f"{BASE_URL}/change-availability-for-tomorrow/"
-                f"{STATUS_CHOICE}?date={saturday.isoformat()}"
-            )
-        else:
-            monday = today + timedelta(days=3)
-            print(f"Friday — skipping Saturday, targeting Monday {monday.isoformat()}")
-            return (
-                f"{BASE_URL}/change-availability-for-tomorrow/"
-                f"{STATUS_CHOICE}?date={monday.isoformat()}"
-            )
-    return f"{BASE_URL}/change-availability-for-tomorrow/{STATUS_CHOICE}"
-
-
-def get_success_message():
-    """Return the expected success message, accounting for Friday."""
-    today = _today()
-    if today.weekday() == 4:  # Friday
-        work_saturday = os.environ.get("WORK_SATURDAY", "false").lower() == "true"
-        if work_saturday:
-            return "You're made available for Saturday"
-        return "You're made available for Monday"
-    return (
-        "You're made available for tomorrow"
-        if STATUS_CHOICE == "available"
-        else "You're made unavailable for tomorrow"
-    )
-
-
 def _build_toggle_urls():
     """Build list of toggle URLs. On Friday, may include Saturday + Monday."""
     today = _today()
