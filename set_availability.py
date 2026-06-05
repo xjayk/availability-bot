@@ -107,14 +107,19 @@ def attempt_set_status():
                 "Make yourself available" in page_content
                 or "Make yourself unavailable" in page_content
             ):
-                print("Confirmation dialog detected — clicking confirm...")
-                page.click(
-                    f"text=Make yourself {STATUS_CHOICE}",
-                    timeout=PAGE_TIMEOUT,
-                )
-                page.wait_for_timeout(4000)
-
-            page_content = page.content()
+                print("Confirmation dialog detected.")
+                page.screenshot(path="confirmation-dialog.png", full_page=True)
+                # Try clicking the available/unavailable link
+                try:
+                    page.click("text=Make yourself", timeout=10000)
+                    page.wait_for_timeout(4000)
+                    print("Clicked confirmation.")
+                except Exception:
+                    print(
+                        "Could not click confirmation — "
+                        "the GET request may have already "
+                        "toggled status."
+                    )
 
             if (
                 "You're made available" in page_content
