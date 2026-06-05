@@ -79,7 +79,7 @@ jobs:
           PAGE_TIMEOUT: ${{ vars.PAGE_TIMEOUT }}
           MAX_RETRIES: ${{ vars.MAX_RETRIES }}
           RETRY_DELAY: ${{ vars.RETRY_DELAY }}
-
+          WORK_SATURDAY: ${{ vars.WORK_SATURDAY }}
         run: python set_availability.py
 
       - uses: actions/upload-artifact@v4
@@ -115,11 +115,15 @@ jobs:
         id: notify
         run: |
           if [ "$(date +%u)" = "5" ]; then
-            echo "label=for Monday" >> "$GITHUB_OUTPUT"
+            if [ "${{ vars.WORK_SATURDAY }}" = "true" ]; then
+              echo "label=for Saturday (Monday will be set separately)" >> "$GITHUB_OUTPUT"
+            else
+              echo "label=for Monday (Saturday skipped)" >> "$GITHUB_OUTPUT"
+            fi
           else
             echo "label=for tomorrow" >> "$GITHUB_OUTPUT"
           fi
-          echo "status=${{ secrets.STATUS_CHOICE }}" >> "$GITHUB_OUTPUT"
+          echo "status=${{ vars.STATUS_CHOICE }}" >> "$GITHUB_OUTPUT"
           echo "timestamp=$(date '+%Y-%m-%d %H:%M UTC')" >> "$GITHUB_OUTPUT"
 
       - name: Notify Telegram (Success)

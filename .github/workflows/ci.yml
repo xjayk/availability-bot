@@ -60,3 +60,40 @@ jobs:
               indentation: {spaces: 2, indent-sequences: consistent}
             }
           }"
+
+  notify:
+    needs: [lint-python, format-python, type-check, lint-yaml]
+    if: |
+      always() &&
+      (
+        github.event_name == 'push' ||
+        (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check CI status
+        id: status
+        run: |
+          if [ "${{ needs.lint-python.result }}" = "success" ] && \
+             [ "${{ needs.format-python.result }}" = "success" ] && \
+             [ "${{ needs.type-check.result }}" = "success" ] && \
+             [ "${{ needs.lint-yaml.result }}" = "success" ]; then
+            echo "emoji=✅" >> "$GITHUB_OUTPUT"
+            echo "result=passed" >> "$GITHUB_OUTPUT"
+          else
+            echo "emoji=❌" >> "$GITHUB_OUTPUT"
+            echo "result=failed" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Notify Telegram
+        uses: appleboy/telegram-action@v1.0.0
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            ${{ steps.status.outputs.emoji }} CI ${{ steps.status.outputs.result }}
+            Repo: ${{ github.repository }}
+            Branch: ${{ github.ref_name }}
+            By: ${{ github.actor }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          disable_web_page_preview: true
