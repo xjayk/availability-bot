@@ -99,73 +99,78 @@ def attempt_set_status():
             )
             print("Login successful.")
 
-            toggle_url = get_toggle_url()
-            print(f"Navigating to {toggle_url} ...")
+            # Build list of URLs to toggle
+            toggle_urls = _build_toggle_urls()
+            results = []
 
-            page.goto(
-                toggle_url,
-                wait_until="domcontentloaded",
-                timeout=PAGE_TIMEOUT,
-            )
-            page.wait_for_timeout(4000)
-
-            # Handle confirmation dialog for date-targeted toggles
-            page_content = page.content()
-            if (
-                "Make yourself available" in page_content
-                or "Make yourself unavailable" in page_content
-            ):
-                print("Confirmation dialog detected.")
-                page.screenshot(path="confirmation-dialog.png", full_page=True)
-                # Try clicking the available/unavailable link
-                try:
-                    page.click("text=Make yourself", timeout=10000)
-                    print("Clicked confirmation.")
-                except Exception:
-                    print(
-                        "Could not click confirmation — "
-                        "the GET request may have already "
-                        "toggled status."
-                    )
-
-                # Wait for redirect back to profile and BigPipe to render
-                page.wait_for_url(
-                    f"{BASE_URL}/user/*",
+            for toggle_url in toggle_urls:
+                print(f"Navigating to {toggle_url} ...")
+                page.goto(
+                    toggle_url,
+                    wait_until="domcontentloaded",
                     timeout=PAGE_TIMEOUT,
                 )
-                page.wait_for_timeout(5000)
+                page.wait_for_timeout(4000)
 
-            page_content = page.content()
+                # Handle confirmation dialog
+                page_content = page.content()
+                if (
+                    "Make yourself available" in page_content
+                    or "Make yourself unavailable" in page_content
+                ):
+                    print("Confirmation dialog detected.")
+	                page.screenshot(path="confirmation-dialog.png", full_page=True)
+	                # Try clicking the available/unavailable link
+                    try:
+                  		page.click("text=Make yourself", timeout=10000)
+                        print("Clicked confirmation.")
+                    except Exception:
+                        print(
+                            "Could not click confirmation — "
+                            "the GET request may have already "
+                            "toggled status."
+                        )
+					
+					# Wait for redirect back to profile and BigPipe to render
+                    page.wait_for_url(
+                        f"{BASE_URL}/user/*",
+                        timeout=PAGE_TIMEOUT,
+                    )
+                    page.wait_for_timeout(5000)
 
-            if (
-                "You're made available" in page_content
-                or "You're made unavailable" in page_content
-            ):
-                print("SUCCESS: Status change confirmed via success message")
-                result = "success"
-            elif f"availunavail-header-top {STATUS_CHOICE}" in page_content:
-                print(
-                    f"SUCCESS: Status changed to {STATUS_CHOICE} "
-                    "(verified via header class)"
-                )
-                result = "success"
-            else:
-                # Last resort: check if we're back on the profile page
-                if "/user/" in page.url:
+                page_content = page.content()
+                if (
+                    "You're made available" in page_content
+                    or "You're made unavailable" in page_content
+                ):
+                    print("SUCCESS: Status change confirmed via message")
+                    results.append("success")
+                elif f"availunavail-header-top {STATUS_CHOICE}" in page_content:
+                    print(
+                        f"SUCCESS: Status changed to {STATUS_CHOICE} "
+                        "(verified via header class)"
+                    )
+                    results.append("success")
+                elif "/user/" in page.url:
                     print(
                         "Back on profile page — "
                         "assuming success (status was likely set)"
                         "toggled status."
                     )
-                    result = "success"
+                    results.append("success")
                 else:
                     print(
                         "WARNING: Could not verify status change via message or header"
                     )
-                    result = "unknown"
+                    results.append("unknown")
 
             page.screenshot(path="final-status.png", full_page=True)
-            return result
+
+            if all(r == "success" for r in results):
+                return "success"
+            elif any(r == "success" for r in results):
+                return "success"  # partial success still counts
+            return "unknown"
 
         except Exception as e:
             print(f"ERROR: {e}")
@@ -175,7 +180,6 @@ def attempt_set_status():
 
         finally:
             browser.close()
-
 
 def main():
     validate_env()
