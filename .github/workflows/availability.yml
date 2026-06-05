@@ -116,7 +116,7 @@ jobs:
         run: |
           if [ "$(date +%u)" = "5" ]; then
             if [ "${{ vars.WORK_SATURDAY }}" = "true" ]; then
-              echo "label=for Saturday (Monday will be set separately)" >> "$GITHUB_OUTPUT"
+              echo "label=for Saturday and Monday" >> "$GITHUB_OUTPUT"
             else
               echo "label=for Monday (Saturday skipped)" >> "$GITHUB_OUTPUT"
             fi
