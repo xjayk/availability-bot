@@ -1,6 +1,8 @@
 import contextlib
 import os
 import time
+import zoneinfo
+from datetime import datetime, timedelta
 
 from playwright.sync_api import sync_playwright
 
@@ -10,21 +12,62 @@ PASSWORD = os.environ.get("PASSWORD")
 _raw_status = os.environ.get("STATUS_CHOICE", "available")
 STATUS_CHOICE = _raw_status.lower()
 
-PAGE_TIMEOUT = int(os.environ.get("PAGE_TIMEOUT", "30000"))
-MAX_RETRIES = int(os.environ.get("MAX_RETRIES", "3"))
-RETRY_DELAY = int(os.environ.get("RETRY_DELAY", "10"))
+PAGE_TIMEOUT = int(os.environ.get("PAGE_TIMEOUT") or "30000")
+MAX_RETRIES = int(os.environ.get("MAX_RETRIES") or "3")
+RETRY_DELAY = int(os.environ.get("RETRY_DELAY") or "10")
 
 
 def validate_env():
-    required = (("BASE_URL", BASE_URL), ("USERNAME", USERNAME), ("PASSWORD", PASSWORD))
+    required = (
+        ("BASE_URL", BASE_URL),
+        ("USERNAME", USERNAME),
+        ("PASSWORD", PASSWORD),
+    )
     missing = [v for v, val in required if val is None]
     if missing:
         raise SystemExit(f"Missing required env vars: {', '.join(missing)}")
     if STATUS_CHOICE not in ("available", "unavailable"):
         raise SystemExit(
-            f"STATUS_CHOICE must be 'available' or 'unavailable' (case-insensitive), "
-            f"got '{_raw_status}'"
+            f"STATUS_CHOICE must be 'available' or 'unavailable' "
+            f"(case-insensitive), got '{_raw_status}'"
         )
+
+
+def _today():
+    """Return the current date in the America/New_York timezone."""
+    return datetime.now(zoneinfo.ZoneInfo("America/New_York")).date()
+
+
+def get_toggle_url():
+    """Build the toggle URL. On Friday, skip Saturday and target Monday."""
+    today = _today()
+    if today.weekday() == 4:  # Friday
+        monday = today + timedelta(days=3)  # skip Sat/Sun
+        print(
+            f"Friday detected — targeting Monday {monday.isoformat()} "
+            "instead of Saturday"
+        )
+        return (
+            f"{BASE_URL}/change-availability-for-tomorrow/"
+            f"{STATUS_CHOICE}?date={monday.isoformat()}"
+        )
+    return f"{BASE_URL}/change-availability-for-tomorrow/{STATUS_CHOICE}"
+
+
+def get_success_message():
+    """Return the expected success message, accounting for Friday."""
+    today = _today()
+    if today.weekday() == 4:  # Friday
+        return (
+            "You're made available for Monday"
+            if STATUS_CHOICE == "available"
+            else "You're made unavailable for Monday"
+        )
+    return (
+        "You're made available for tomorrow"
+        if STATUS_CHOICE == "available"
+        else "You're made unavailable for tomorrow"
+    )
 
 
 def attempt_set_status():
@@ -37,7 +80,7 @@ def attempt_set_status():
             print(f"Logging into {BASE_URL}/user/login ...")
             page.goto(
                 f"{BASE_URL}/user/login",
-                wait_until="load",
+                wait_until="domcontentloaded",
                 timeout=PAGE_TIMEOUT,
             )
 
@@ -51,18 +94,22 @@ def attempt_set_status():
             )
             print("Login successful.")
 
-            toggle_url = f"{BASE_URL}/change-availability-for-tomorrow/{STATUS_CHOICE}"
+            toggle_url = get_toggle_url()
             print(f"Navigating to {toggle_url} ...")
-            page.goto(toggle_url, wait_until="load", timeout=PAGE_TIMEOUT)
 
-            page.wait_for_timeout(4000)
-
-            page_content = page.content()
-            expected_message = (
-                "You're made available for tomorrow"
-                if STATUS_CHOICE == "available"
-                else "You're made unavailable for tomorrow"
+            page.goto(
+                toggle_url,
+                wait_until="domcontentloaded",
+                timeout=PAGE_TIMEOUT,
             )
+
+            expected_message = get_success_message()
+
+            page.wait_for_selector(
+                f'text="{expected_message}", .availunavail-header-top.{STATUS_CHOICE}',
+                timeout=PAGE_TIMEOUT,
+            )
+            page_content = page.content()
 
             if expected_message in page_content:
                 print(f"SUCCESS: {expected_message}")
