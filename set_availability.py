@@ -160,8 +160,7 @@ def attempt_set_status():
                     result = "success"
                 else:
                     print(
-                        "WARNING: Could not verify "
-                        "status change via message or header"
+                        "WARNING: Could not verify status change via message or header"
                     )
                     result = "unknown"
 
