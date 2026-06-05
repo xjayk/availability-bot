@@ -110,6 +110,17 @@ jobs:
             } else {
               core.setOutput('ci_conclusion', 'no_runs');
             }
+            
+      - name: Build notification message
+        id: notify
+        run: |
+          if [ "$(date +%u)" = "5" ]; then
+            echo "label=for Monday" >> "$GITHUB_OUTPUT"
+          else
+            echo "label=for tomorrow" >> "$GITHUB_OUTPUT"
+          fi
+          echo "status=${{ secrets.STATUS_CHOICE }}" >> "$GITHUB_OUTPUT"
+          echo "timestamp=$(date '+%Y-%m-%d %H:%M UTC')" >> "$GITHUB_OUTPUT"
 
       - name: Notify Telegram (Success)
         if: steps.run.outputs.result == 'success'
@@ -118,9 +129,9 @@ jobs:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           message: |
-            ✅ Availability set to "${{ secrets.STATUS_CHOICE }}" for tomorrow.
+            ✅ Availability set to "${{ steps.notify.outputs.status }}" ${{ steps.notify.outputs.label }}.
             CI on main: ${{ steps.ci-status.outputs.ci_conclusion }}
-            $(date '+%Y-%m-%d %H:%M UTC')
+            ${{ steps.notify.outputs.timestamp }}
 
       - name: Notify Telegram (Failure / Unknown)
         if: steps.run.outputs.result != 'success'
