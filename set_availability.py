@@ -2,7 +2,7 @@ import contextlib
 import os
 import time
 import zoneinfo
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 
 from playwright.sync_api import sync_playwright
 
@@ -25,9 +25,7 @@ def validate_env():
     )
     missing = [v for v, val in required if val is None]
     if missing:
-        raise SystemExit(
-            f"Missing required env vars: {', '.join(missing)}"
-        )
+        raise SystemExit(f"Missing required env vars: {', '.join(missing)}")
     if STATUS_CHOICE not in ("available", "unavailable"):
         raise SystemExit(
             f"STATUS_CHOICE must be 'available' or 'unavailable' "
@@ -109,7 +107,6 @@ def attempt_set_status():
 
             expected_message = get_success_message()
 
-            # Wait for either the success message or the updated header class
             page.wait_for_selector(
                 f'text="{expected_message}", '
                 f".availunavail-header-top.{STATUS_CHOICE}",
@@ -120,10 +117,7 @@ def attempt_set_status():
             if expected_message in page_content:
                 print(f"SUCCESS: {expected_message}")
                 result = "success"
-            elif (
-                f"availunavail-header-top {STATUS_CHOICE}"
-                in page_content
-            ):
+            elif f"availunavail-header-top {STATUS_CHOICE}" in page_content:
                 print(
                     f"SUCCESS: Status changed to {STATUS_CHOICE} "
                     "(verified via header class)"
