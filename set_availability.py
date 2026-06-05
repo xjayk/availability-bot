@@ -66,12 +66,11 @@ def get_success_message():
         else "You're made unavailable for tomorrow"
     )
 
+
 def attempt_set_status():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        context = browser.new_context(
-            locale="en-US", timezone_id="America/New_York"
-        )
+        context = browser.new_context(locale="en-US", timezone_id="America/New_York")
         page = context.new_page()
 
         try:
@@ -104,8 +103,10 @@ def attempt_set_status():
 
             # Handle confirmation dialog for date-targeted toggles
             page_content = page.content()
-            if "Make yourself available" in page_content or \
-               "Make yourself unavailable" in page_content:
+            if (
+                "Make yourself available" in page_content
+                or "Make yourself unavailable" in page_content
+            ):
                 print("Confirmation dialog detected — clicking confirm...")
                 page.click(
                     f"text=Make yourself {STATUS_CHOICE}",
@@ -115,8 +116,10 @@ def attempt_set_status():
 
             page_content = page.content()
 
-            if "You're made available" in page_content or \
-               "You're made unavailable" in page_content:
+            if (
+                "You're made available" in page_content
+                or "You're made unavailable" in page_content
+            ):
                 print("SUCCESS: Status change confirmed via success message")
                 result = "success"
             elif f"availunavail-header-top {STATUS_CHOICE}" in page_content:
@@ -126,10 +129,7 @@ def attempt_set_status():
                 )
                 result = "success"
             else:
-                print(
-                    "WARNING: Could not verify status change "
-                    "via message or header."
-                )
+                print("WARNING: Could not verify status change via message or header.")
                 result = "unknown"
 
             page.screenshot(path="final-status.png", full_page=True)
@@ -143,6 +143,7 @@ def attempt_set_status():
 
         finally:
             browser.close()
+
 
 def main():
     validate_env()
