@@ -2,6 +2,7 @@ import contextlib
 import os
 import time
 
+from datetime import date, timedelta
 from playwright.sync_api import sync_playwright
 
 BASE_URL = os.environ.get("BASE_URL")
@@ -10,9 +11,9 @@ PASSWORD = os.environ.get("PASSWORD")
 _raw_status = os.environ.get("STATUS_CHOICE", "available")
 STATUS_CHOICE = _raw_status.lower()
 
-PAGE_TIMEOUT = int(os.environ.get("PAGE_TIMEOUT", "30000"))
-MAX_RETRIES = int(os.environ.get("MAX_RETRIES", "3"))
-RETRY_DELAY = int(os.environ.get("RETRY_DELAY", "10"))
+PAGE_TIMEOUT = int(os.environ.get("PAGE_TIMEOUT") or "30000")
+MAX_RETRIES = int(os.environ.get("MAX_RETRIES") or "3")
+RETRY_DELAY = int(os.environ.get("RETRY_DELAY") or "10")
 
 
 def validate_env():
@@ -27,6 +28,35 @@ def validate_env():
         )
 
 
+def get_toggle_url():
+    """Build the toggle URL. On Friday, skip Saturday and target Monday instead."""
+    today = date.today()
+    if today.weekday() == 4:  # Friday
+        monday = today + timedelta(days=3)  # skip Sat/Sun
+        print(f"Friday detected — targeting Monday {monday.isoformat()} instead of Saturday")
+        return (
+            f"{BASE_URL}/change-availability-for-tomorrow/"
+            f"{STATUS_CHOICE}?date={monday.isoformat()}"
+        )
+    return f"{BASE_URL}/change-availability-for-tomorrow/{STATUS_CHOICE}"
+
+
+def get_success_message():
+    """Return the expected success message, accounting for Friday's Monday target."""
+    today = date.today()
+    if today.weekday() == 4:  # Friday
+        return (
+            "You're made available for Monday"
+            if STATUS_CHOICE == "available"
+            else "You're made unavailable for Monday"
+        )
+    return (
+        "You're made available for tomorrow"
+        if STATUS_CHOICE == "available"
+        else "You're made unavailable for tomorrow"
+    )
+
+
 def attempt_set_status():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -37,9 +67,10 @@ def attempt_set_status():
             print(f"Logging into {BASE_URL}/user/login ...")
             page.goto(
                 f"{BASE_URL}/user/login",
-                wait_until="load",
+                wait_until="domcontentloaded",
                 timeout=PAGE_TIMEOUT,
             )
+            page.wait_for_timeout(5000)  # let Drupal BigPipe render the form
 
             page.fill("input#edit-name", USERNAME, timeout=PAGE_TIMEOUT)
             page.fill("input#edit-pass", PASSWORD, timeout=PAGE_TIMEOUT)
@@ -51,18 +82,14 @@ def attempt_set_status():
             )
             print("Login successful.")
 
-            toggle_url = f"{BASE_URL}/change-availability-for-tomorrow/{STATUS_CHOICE}"
+            toggle_url = get_toggle_url()
             print(f"Navigating to {toggle_url} ...")
-            page.goto(toggle_url, wait_until="load", timeout=PAGE_TIMEOUT)
+            page.goto(toggle_url, wait_until="domcontentloaded", timeout=PAGE_TIMEOUT)
 
-            page.wait_for_timeout(4000)
+            page.wait_for_timeout(4000)  # let Drupal BigPipe render the response
 
             page_content = page.content()
-            expected_message = (
-                "You're made available for tomorrow"
-                if STATUS_CHOICE == "available"
-                else "You're made unavailable for tomorrow"
-            )
+            expected_message = get_success_message()
 
             if expected_message in page_content:
                 print(f"SUCCESS: {expected_message}")
