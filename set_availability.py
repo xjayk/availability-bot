@@ -117,11 +117,10 @@ def attempt_set_status():
                             "the GET request may have already "
                             "toggled status."
                         )
-                    page.wait_for_url(
-                        f"{BASE_URL}/user/*",
-                        timeout=PAGE_TIMEOUT,
-                    )
-                    page.wait_for_timeout(5000)
+
+                # Wait for the page to settle after toggle/redirect
+                page.wait_for_load_state("networkidle", timeout=PAGE_TIMEOUT)
+                page.wait_for_timeout(3000)
 
                 page_content = page.content()
                 if (
