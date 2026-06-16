@@ -1,6 +1,9 @@
 # availability-bot
 
-Scheduled GitHub Action that logs into a company Drupal portal each weekday morning and sets your availability status for the next day, then sends a confirmation via Telegram.
+Built to kill the repetitive chore of manually updating a company availability portal. Every weekday morning, this GitHub Action spins up Playwright, logs into the Drupal site, toggles your status for the next day, and texts you a Telegram receipt. Zero friction, zero forgotten updates
+
+[![CI](https://github.com/xjayk/availability-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/xjayk/availability-bot/actions/workflows/ci.yml)
+[![Schedule](https://img.shields.io/badge/schedule-Mon--Fri%207%20AM%20ET-blue)](.github/workflows/availability.yml)
 
 ## How It Works
 
